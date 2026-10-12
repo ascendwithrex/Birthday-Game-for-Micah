@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Birthday Game for Micah!</title>
+<style>
+:root{--pink:#f6a8c7;--deep:#bd5f88;--cream:#fff8f4;--green:#8bbd8a}
+*{box-sizing:border-box}
+body{margin:0;background:#fff3f7;color:#77445b;font-family:"Trebuchet MS",system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:12px}
+.shell{width:min(100%,1000px);background:#fffaf8;border:3px solid #f2c4d5;border-radius:22px;box-shadow:0 12px 35px #c76e8b22;overflow:hidden}
+.top{padding:16px 20px 10px;text-align:center}
+h1{font-size:clamp(1.3rem,4vw,2rem);margin:0;color:#b95f86;letter-spacing:.03em}
+.subtitle{margin:6px 0 12px;font-size:.95rem}
+.hud{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;font-weight:700}
+.meter{width:min(240px,55vw);height:12px;background:#f6dce6;border-radius:99px;overflow:hidden;border:1px solid #edb6cb}
+#bar{height:100%;width:0;background:linear-gradient(90deg,#ef92b8,#d65e91);transition:width .2s}
+.game-wrap{padding:0 14px 14px}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;border:3px solid #d7a9a0;border-radius:13px;background:#d8efcf;image-rendering:pixelated;touch-action:none}
+.instructions{text-align:center;margin:9px 0 5px;font-size:.9rem;line-height:1.5}
+.controls{display:flex;justify-content:center;gap:8px;margin:10px auto 4px;flex-wrap:wrap}
+.controls button,.action{border:0;border-radius:12px;padding:10px 16px;background:#f4b4ce;color:#713d55;font-weight:800;cursor:pointer;box-shadow:0 3px 0 #d78ca9}
+.controls button:active,.action:active{transform:translateY(2px);box-shadow:0 1px 0 #d78ca9}
+#overlay{position:fixed;inset:0;display:none;place-items:center;background:#60364a66;padding:16px;z-index:5}
+.modal{width:min(450px,100%);background:#fff8fb;border:3px solid #f3b4ce;border-radius:22px;padding:24px;text-align:center;box-shadow:0 16px 55px #54283d44;animation:pop .35s ease}
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.gift{font-size:90px;line-height:1.2;cursor:pointer;filter:drop-shadow(0 5px 2px #e5a2bd);user-select:none}
+.modal h2{margin:5px 0 10px;color:#b4527d}
+.modal p{line-height:1.6}
+.action{margin-top:8px;font-size:1rem}
+#flowerCurtain{position:fixed;inset:0;z-index:10;display:none;overflow:hidden;background:#fff0f6;align-content:center;justify-content:center}
+.flower{position:absolute;font-size:clamp(28px,6vw,70px);animation:float 2.5s ease-in-out infinite alternate;filter:drop-shadow(0 4px 2px #bd628322)}
+@keyframes float{from{transform:translateY(-10px) rotate(-12deg)}to{transform:translateY(10px) rotate(12deg)}}
+.curtain-message{position:relative;z-index:2;max-width:580px;margin:18px;padding:20px 24px;background:#fffaf0ed;border:2px solid #eeb1c9;border-radius:18px;text-align:center;color:#8e4968;font-weight:800;font-size:clamp(1rem,3vw,1.35rem);box-shadow:0 8px 35px #ad638333}
+#letter{display:none;position:fixed;inset:0;z-index:12;background:#ffeaf2;overflow:auto;padding:22px;place-items:center}
+.letter-card{width:min(650px,100%);background:#fffaf8;border:2px solid #efb5cc;border-radius:20px;padding:clamp(22px,5vw,42px);box-shadow:0 15px 40px #b9638426;line-height:1.8;white-space:pre-line}
+.letter-card h2{text-align:center;color:#b4527d}
+.signature{text-align:right;color:#b4527d;font-weight:800}
+.small{font-size:.82rem;color:#9d6b7f}
+@media(max-width:560px){body{padding:6px}.top{padding:13px 10px 8px}.game-wrap{padding:0 7px 10px}.instructions{font-size:.82rem}.controls button{padding:9px 13px}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="top">
+    <h1>🌸 Collect All the Peonies, Quick! 🌸</h1>
+    <p class="subtitle">A little gift after the game.</p>
+    <div class="hud"><span>Pink Peonies: <span id="count">0</span> / 19</span><div class="meter"><div id="bar"></div></div><span id="status">Find and Collect the flowers!</span></div>
+  </header>
+  <section class="game-wrap">
+    <canvas id="game" width="800" height="450" aria-label="Squirrel flower collecting game"></canvas>
+    <p class="instructions">Guide the little squirrel along the trail and collect all 19 pink peony stems.<br>Use <b>WASD / arrow keys</b> or the buttons below.</p>
+    <div class="controls">
+      <button data-dir="up" aria-label="Move up">▲</button>
+      <button data-dir="left" aria-label="Move left">◀</button>
+      <button data-dir="down" aria-label="Move down">▼</button>
+      <button data-dir="right" aria-label="Move right">▶</button>
+      <button id="restart">↻ Restart</button>
+    </div>
+    <p class="small" style="text-align:center">Tip: wander around the meadow—flowers that are scattered along the winding path.</p>
+  </section>
+</main>
+
+<div id="overlay">
+  <div class="modal" id="giftModal">
+    <div class="gift" id="gift" role="button" tabindex="0" aria-label="Open pink gift">🎁</div>
+    <h2>Congratulations for collecting every peony! ♡</h2>
+    <p>A little gift is waiting for you. Tap the pink box to open it.</p>
+    <button class="action" id="openGift">Open your gift ♡</button>
+  </div>
+</div>
+<div id="flowerCurtain">
+  <div class="curtain-message">Wait patiently for at least 9 seconds before you can claim your final gift...</div>
+</div>
+<div id="letter">
+  <article class="letter-card">
+    <h2>For You, My Baby Micah! ♡</h2>
+    <p>Happy birthday, baby! 🐿️
+
+I'm sorry if I can't be here with you today, but trust me that I will be jumping from happiness as you survive another year even if I'm already gone. I'm sorry that I can't give you the same affection that I gave you back when we're still together. I hope that you forgive me for what I did. Anyways, here are my wishes for you:
+
+I hope you enjoy your day filled with the same warmth, sweetness, and happiness that you once brought into my life. You deserve to feel loved not only today, but every single day. 
+
+If I could gather every beautiful peony in the world, I would still feel like it wasn't enough to show how special you are to me and how much I've loved you. I made this mini game for you—a tiny squirrel that represents you, 19 pink peonies, and one final gift, all to remind you that the day where you started existing from this world is worth celebrating.
+
+Thank you for being you. I hope this new chapter of your life brings you peaceful days, beautiful memories, courage for you to achieve your dreams, and countless reasons to smile. Even on your darkest days, I hope you remember how much you mean to me.
+
+I love you more than these little words can explain. May your birthday be the kind of celebration that will make your heart be filled with happiness and love that you deserve. I'll always be watching you here from above. I love you so much! My sweet little baby. 🐿️🩷</p>
+    <p class="signature">With all my love,<br>Rex 🦖❤️</p>
+    <div style="text-align:center"><button class="action" id="playAgain">Play again ♡</button></div>
+  </article>
+</div>
+<script>
+(() => {
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+const W=canvas.width,H=canvas.height;
+const countEl=document.getElementById('count'),bar=document.getElementById('bar'),statusEl=document.getElementById('status');
+const overlay=document.getElementById('overlay'),curtain=document.getElementById('flowerCurtain'),letter=document.getElementById('letter');
+const keys={}; let collected=0,won=false,opened=false,player={x:80,y:220,speed:2.8,dir:1,step:0},flowers=[];
+const pathPts=[[-30,250],[100,250],[180,185],[290,185],[360,275],[470,275],[545,170],[665,170],[830,260]];
+function rand(a,b){return a+Math.random()*(b-a)}
+function makeFlowers(){flowers=[];let tries=0;while(flowers.length<19&&tries++<300){let x=45+Math.random()*710,y=45+Math.random()*360;let nearPath=false;for(let i=0;i<pathPts.length-1;i++){let a=pathPts[i],b=pathPts[i+1],dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy))),px=a[0]+t*dx,py=a[1]+t*dy;if(Math.hypot(x-px,y-py)<60)nearPath=true;}if(nearPath&&!flowers.some(f=>Math.hypot(f.x-x,f.y-y)<28))flowers.push({x,y,taken:false});}while(flowers.length<19)flowers.push({x:rand(30,770),y:rand(30,420),taken:false});}
+function roundedRect(x,y,w,h,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function drawBackground(){
+ ctx.fillStyle='#d8efcf';ctx.fillRect(0,0,W,H);
+ // soft meadow patches
+ for(let i=0;i<70;i++){let x=(i*137+31)%W,y=(i*79+22)%H;ctx.fillStyle=i%2?'#c8e6bf':'#e4f2d8';ctx.fillRect(x,y,18,10)}
+ // winding sandy trail
+ ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#c9a88b';ctx.lineWidth=76;ctx.beginPath();pathPts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();
+ ctx.strokeStyle='#e5c8a8';ctx.lineWidth=62;ctx.stroke();
+ // bushes and tiny blossoms
+ for(let i=0;i<20;i++){let x=(i*97+24)%W,y=(i*131+18)%H;ctx.fillStyle='#79ad79';ctx.fillRect(x,y,12,9);ctx.fillStyle='#f6c0d3';ctx.fillRect(x+3,y-4,5,5)}
+ // decorative trees
+ [[35,65],[750,65],[40,390],[760,380]].forEach(([x,y])=>{ctx.fillStyle='#9b6f53';ctx.fillRect(x+12,y+20,9,24);ctx.fillStyle='#6eaa78';ctx.fillRect(x,y,32,26);ctx.fillStyle='#8bc28a';ctx.fillRect(x+6,y-7,21,21)});
+}
+function drawFlower(f){
+ if(f.taken)return;
+ const x=f.x,y=f.y;
+ ctx.fillStyle='#5b9c62';ctx.fillRect(x-1,y+5,3,14);ctx.fillRect(x-7,y+12,7,3);
+ ctx.fillStyle='#f6a0c1';[[0,-5],[-6,-2],[6,-2],[-4,5],[4,5],[0,2]].forEach(([dx,dy])=>ctx.fillRect(x+dx-3,y+dy-3,7,7));
+ ctx.fillStyle='#ffe2ed';ctx.fillRect(x-2,y-3,5,5);ctx.fillStyle='#d98b35';ctx.fillRect(x-1,y-2,3,3);
+}
+function drawSquirrel(){
+ let x=Math.round(player.x),y=Math.round(player.y);
+ ctx.save();ctx.translate(x,y);if(player.dir<0)ctx.scale(-1,1);
+ // pixel-art fluffy tail
+ ctx.fillStyle='#a85c37';ctx.fillRect(-22,-14,13,12);ctx.fillRect(-26,-19,12,12);ctx.fillStyle='#e9a16d';ctx.fillRect(-23,-16,7,7);
+ // body and head
+ ctx.fillStyle='#b86d43';ctx.fillRect(-11,-10,17,18);ctx.fillRect(-8,-20,16,14);
+ // ears
+ ctx.fillStyle='#b86d43';ctx.fillRect(-8,-25,5,7);ctx.fillRect(3,-25,5,7);ctx.fillStyle='#efb0a5';ctx.fillRect(-7,-23,3,4);ctx.fillRect(4,-23,3,4);
+ // muzzle, tummy
+ ctx.fillStyle='#f3c49c';ctx.fillRect(1,-13,10,8);ctx.fillRect(-6,-3,9,9);
+ // eye and nose
+ ctx.fillStyle='#392c2c';ctx.fillRect(3,-17,3,3);ctx.fillRect(10,-11,3,3);
+ // pink bow
+ ctx.fillStyle='#ef82b0';ctx.fillRect(-2,-22,4,4);ctx.fillRect(-6,-24,4,4);ctx.fillRect(2,-24,4,4);
+ // feet
+ ctx.fillStyle='#78452f';let offset=Math.floor(player.step/7)%2?2:0;ctx.fillRect(-8,7+offset,6,4);ctx.fillRect(2,7+(2-offset),6,4);
+ ctx.restore();
+}
+function draw(){
+ drawBackground();flowers.forEach(drawFlower);drawSquirrel();
+ // little sparkle marks
+ ctx.fillStyle='#fff9f3';ctx.fillRect(player.x+17,player.y-21,3,3);ctx.fillRect(player.x+22,player.y-15,2,2);
+}
+function update(){
+ if(!won&&!opened){
+ let dx=0,dy=0;
+ if(keys.ArrowLeft||keys.a||keys.A)dx--;if(keys.ArrowRight||keys.d||keys.D)dx++;if(keys.ArrowUp||keys.w||keys.W)dy--;if(keys.ArrowDown||keys.s||keys.S)dy++;
+ if(dx||dy){let len=Math.hypot(dx,dy);player.x+=dx/len*player.speed;player.y+=dy/len*player.speed;player.step++;if(dx)player.dir=dx<0?-1:1}
+ player.x=Math.max(20,Math.min(W-20,player.x));player.y=Math.max(28,Math.min(H-25,player.y));
+ flowers.forEach(f=>{if(!f.taken&&Math.hypot(f.x-player.x,f.y-player.y)<24){f.taken=true;collected++;countEl.textContent=collected;bar.style.width=(collected/19*100)+'%';statusEl.textContent=collected===19?'Gift unlocked!':'Keep going ♡';if(collected===19){won=true;setTimeout(()=>overlay.style.display='grid',450)}}});
+ }
+ draw();requestAnimationFrame(update);
+}
+function reset(){collected=0;won=false;opened=false;player={x:80,y:220,speed:2.8,dir:1,step:0};countEl.textContent='0';bar.style.width='0%';statusEl.textContent='Find the flowers!';overlay.style.display='none';curtain.style.display='none';letter.style.display='none';makeFlowers();}
+document.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();keys[e.key]=true;if((e.key==='Enter'||e.key===' ')&&overlay.style.display==='grid')openGift();});
+document.addEventListener('keyup',e=>keys[e.key]=false);
+document.querySelectorAll('[data-dir]').forEach(btn=>{const dir=btn.dataset.dir,key={up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'}[dir];btn.addEventListener('pointerdown',e=>{e.preventDefault();keys[key]=true;btn.setPointerCapture?.(e.pointerId)});['pointerup','pointercancel','lostpointercapture'].forEach(ev=>btn.addEventListener(ev,()=>keys[key]=false));});
+document.getElementById('restart').addEventListener('click',reset);
+function openGift(){if(!won||opened)return;opened=true;overlay.style.display='none';curtain.style.display='flex';curtain.style.alignItems='center';curtain.style.justifyContent='center';
+ curtain.querySelectorAll('.flower').forEach(n=>n.remove());
+ const types=['🌸','🌺','🌷','💐','🌼','🌹','🪷','🌸','🌺','🌷','💮'];
+ for(let i=0;i<75;i++){let f=document.createElement('div');f.className='flower';f.textContent=types[i%types.length];f.style.left=rand(0,95)+'%';f.style.top=rand(0,92)+'%';f.style.animationDelay=rand(-2,0)+'s';f.style.transform=`rotate(${rand(-35,35)}deg)`;curtain.appendChild(f);}
+ setTimeout(()=>{curtain.style.display='none';letter.style.display='grid'},9000);
+}
+document.getElementById('openGift').addEventListener('click',openGift);
+document.getElementById('gift').addEventListener('click',openGift);
+document.getElementById('gift').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openGift()}});
+document.getElementById('playAgain').addEventListener('click',reset);
+makeFlowers();update();
+})();
+</script>
+</body>
+</html>
